@@ -7,4 +7,4 @@ COPY docker-spark/submit.sh /submit.sh
 
 ENV SPARK_APPLICATION_PYTHON_LOCATION /app/app.py
 
-CMD ["/bin/bash", "/template.sh"]
+CMD ["/bin/bash", "/submit.sh"]
