@@ -1,10 +1,16 @@
 FROM bde2020/spark-submit:2.4.4-hadoop2.7
 
-COPY docker-spark /
+# Copy the source code
+COPY /app /app
+
+COPY docker-spark/template.sh /
+
+# Copy the requirements.txt first, for separate dependency resolving and downloading
 COPY requirements.txt /app/requirements.txt
-COPY app/app.py /app/app.py
-COPY docker-spark/submit.sh /submit.sh
+RUN cd /app \
+      && pip3 install -r requirements.txt
+
 
 ENV SPARK_APPLICATION_PYTHON_LOCATION /app/app.py
 
-CMD ["/bin/bash", "/submit.sh"]
+CMD ["/bin/bash", "/template.sh"]
