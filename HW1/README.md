@@ -14,7 +14,6 @@ tbd...
 The Reports and ToDo's are managed via Google-Drive:
 https://docs.google.com/document/d/1N_UKlgGohHZXpln4wLSVmAgZYo6mHDzPKwiSeX_M7hg/edit?fbclid=IwAR1DC72F7gKzQ1nGgcpF2qZDg6h9zHiLrY6Rkinria1wcMLzUgwNXtHIiOo
 
-
 # Setup
 
 Spark cluster setup:
@@ -25,6 +24,17 @@ App setup:
 1. docker build --rm -t hpc-app .
 2. docker run -it --name hpc-app -e ENABLE_INIT_DAEMON=false --link spark-master:spark-master  --net docker-spark_default  -d hpc-app
 :w
+
 # RELATED:
 https://github.com/big-data-europe/docker-spark/pull/87 
+
+# Data Preprocessing
+
+The following Data Preprocessing Tasks are done by the app/preprocessing.py script:
+
+* Fixing of Missing Data (indicated with ? instead of e.g. NaN)
+* Fixing of Datatypes of columns of interest
+* Dimension Reduction
+
+Preprocessed data is stored under /preprocessed.
  
