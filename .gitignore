@@ -1,3 +1,4 @@
 /preprocessed/*
 /datasets/*.csv
 /datasets/*.txt
+.idea
