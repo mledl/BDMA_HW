@@ -22,7 +22,7 @@ Spark cluster setup:
 
 App setup:
 1. docker build --rm -t hpc-app .
-2. docker run -it --name hpc-app -e ENABLE_INIT_DAEMON=false --link spark-master:spark-master  --net docker-spark_default  -d hpc-app
+2. docker run -it --name hpc-app -e ENABLE_INIT_DAEMON=false --link spark-master:spark-master  --net docker_spark_hadoop_default  -d hpc-app
 :w
 
 # RELATED:

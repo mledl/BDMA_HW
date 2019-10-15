@@ -13,7 +13,7 @@ def get_basic_statistics(data, column_name):
     return max,min
 
 # Spark setup
-conf = SparkConf().setAppName('app').setMaster('spark://172.19.0.2:7077').setSparkHome('/spark/')
+conf = SparkConf().setAppName('app').setMaster('spark://172.18.0.3:7077').setSparkHome('/spark/')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
@@ -24,9 +24,9 @@ df = spark.read.csv("hdfs://namenode:8020/pre_household_power_consumption.csv",h
 count = df.count()
 
 global_active_power_stat = get_basic_statistics(df, "Global_active_power")
-# global_reactive_power_stat = get_basic_statistics(df, "Global_reactive_power")
-# voltage_stat = get_basic_statistics(df, "Voltage")
-# global_intensity_stat= get_basic_statistics(df, "Global_intensity")
+global_reactive_power_stat = get_basic_statistics(df, "Global_reactive_power")
+voltage_stat = get_basic_statistics(df, "Voltage")
+global_intensity_stat= get_basic_statistics(df, "Global_intensity")
 
 # Calculating Min-max normalization
 assembler = VectorAssembler(inputCols=df.columns[1:], outputCol="features")
