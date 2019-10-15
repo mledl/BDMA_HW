@@ -10,17 +10,18 @@ from pyspark.ml.feature import MinMaxScaler, VectorAssembler, Imputer
 
 from zipfile import ZipFile
 
-def extract_dataset(zipFilePath, tmpDir):
-	# extract dataset zip file into tmp directory
-	with ZipFile(zipFilePath, 'r') as zipObj:
-		fileNames = zipObj.namelist()
-		print('files in archive: ' + str(fileNames))
-		for fileName in fileNames:
-			if fileName.endswith('.txt'):
-				zipObj.extract(fileName, tmpDir)
-				pre, ext = os.path.splitext(fileName)
-				os.rename(tmpDir + fileName, tmpDir + pre + '.csv')
-				print('successfully extracted file: ' + fileName)
+# for local 
+#def extract_dataset(zipFilePath, tmpDir):
+#	# extract dataset zip file into tmp directory
+#	with ZipFile(zipFilePath, 'r') as zipObj:
+#		fileNames = zipObj.namelist()
+#		print('files in archive: ' + str(fileNames))
+#		for fileName in fileNames:
+#			if fileName.endswith('.txt'):
+#				zipObj.extract(fileName, tmpDir)
+#				pre, ext = os.path.splitext(fileName)
+#				os.rename(tmpDir + fileName, tmpDir + pre + '.csv')
+#				print('successfully extracted file: ' + fileName)
 
 def prepocess_data(df):
 	# Preprocessing the data
@@ -50,8 +51,8 @@ def cleanup(dir, del_dir):
 
 
 def get_basic_statistics(df, column_name):
-	max = df.agg({column_name: "max"}).collect()[0][f"max({column_name})"]
-	min = df.agg({column_name: "min"}).collect()[0][f"min({column_name})"]
+	max = df.agg({column_name: "max"}).collect()[0][0]
+	min = df.agg({column_name: "min"}).collect()[0][0]
 	df_stats = df.select(fun.mean(fun.col(column_name)).alias('mean'), fun.stddev(fun.col(column_name)).alias('std')).collect()
 	mean = df_stats[0]['mean']
 	std = df_stats[0]['std']
@@ -95,17 +96,21 @@ def merge_files(files):
 					targetFile.write(line.rstrip() + '\n')
 				
 	print('successfully merged data into file: ../results/hw1_min_max_normalization.csv')
-		
 
 # Spark setup
-conf = SparkConf().setAppName('hello')
+conf = SparkConf().setAppName('app').setMaster('spark://172.18.0.3:7077').setSparkHome('/spark/')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
+<<<<<<< HEAD
 # Extracting datset and reading data
-tmpDir = '../data/tmp/';
-extract_dataset("../data/household_power_consumption.zip", tmpDir)
-df = spark.read.csv(tmpDir + "household_power_consumption.csv", header=True, sep=";", inferSchema=True, nullValue="?")
+# for local testing
+# tmpDir = '../data/tmp/';
+# for local testing
+#extract_dataset("../data/household_power_consumption.zip", tmpDir)
+#df = spark.read.csv(tmpDir + "household_power_consumption.csv", header=True, sep=";", inferSchema=True, nullValue="?")
+# Read from production system
+df = spark.read.csv("hdfs://namenode:8020/pre_household_power_consumption.csv", header=True, sep=",", inferSchema=True, nullValue="?")
 
 # Data preprocessing
 df = prepocess_data(df)
@@ -130,6 +135,5 @@ min_max_df = df_3.rdd.map(lambda x:[float(y) for y in x['features_minmax']]).toD
 # create files and print
 print_statistics([global_active_power_stat, global_reactive_power_stat, voltage_stat, global_intensity_stat], min_max_df)
 
-cleanup(tmpDir, 1)
-
-
+# for local testing
+#cleanup(tmpDir, 1)
