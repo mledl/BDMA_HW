@@ -1,8 +1,4 @@
-HW1/preprocessed/*.csv
-HW2/preprocessed/*.csv
-HW3/preprocessed/*.csv
-HW4/preprocessed/*.csv
-HW5/preprocessed/*.csv
+HW1/results/*.csv
 HW1/datasets/*.csv
 HW1/datasets/*.txt
 HW2/datasets/*.csv
