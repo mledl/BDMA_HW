@@ -98,14 +98,15 @@ def merge_files(files):
 	print('successfully merged data into file: ../results/hw1_min_max_normalization.csv')
 
 # Spark setup
+# for local testing
+#conf = SparkConf().setAppName('localTest')
 conf = SparkConf().setAppName('app').setMaster('spark://172.18.0.3:7077').setSparkHome('/spark/')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
-<<<<<<< HEAD
 # Extracting datset and reading data
 # for local testing
-# tmpDir = '../data/tmp/';
+#tmpDir = '../data/tmp/';
 # for local testing
 #extract_dataset("../data/household_power_consumption.zip", tmpDir)
 #df = spark.read.csv(tmpDir + "household_power_consumption.csv", header=True, sep=";", inferSchema=True, nullValue="?")
