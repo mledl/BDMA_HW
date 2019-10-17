@@ -100,7 +100,7 @@ def merge_files(files):
 # Spark setup
 # for local testing
 #conf = SparkConf().setAppName('localTest')
-conf = SparkConf().setAppName('app').setMaster('spark://172.20.0.2:7077').setSparkHome('/spark/')
+conf = SparkConf().setAppName('app').setMaster('spark://172.21.0.3:7077').setSparkHome('/spark/')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
