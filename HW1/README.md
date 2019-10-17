@@ -1,12 +1,9 @@
 # BDMA_HW
 This repository holds all the pieces of homework done at the "Big Data Mining and Applications" class at the National Taipei University of Technology in Fall 2019.
 
-# Environment Setup
-tbd...
-
 # Framework Versions
 
- * Python 3.7.3
+ * Python 3.7.4
  * Spark  2.4.4
  
 # Report and ToDo's
@@ -30,11 +27,13 @@ https://github.com/big-data-europe/docker-spark/pull/87
 
 # Data Preprocessing
 
-The following Data Preprocessing Tasks are done by the app/preprocessing.py script:
+The following Data Preprocessing Tasks are done using Spark script:
 
 * Fixing of Missing Data (indicated with ? instead of e.g. NaN)
 * Fixing of Datatypes of columns of interest
 * Dimension Reduction
 
-Preprocessed data is stored under /preprocessed.
+# Results
+
+The calculated results are stored in the /results directory.
  
