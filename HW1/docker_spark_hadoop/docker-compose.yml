@@ -1,38 +1,36 @@
-version: "3.5"
+version: "3"
 
 services:
   namenode:
-    image: bde2020/hadoop-namenode:1.1.0-hadoop2.8-java8
+    image: bde2020/hadoop-namenode:2.0.0-hadoop3.1.2-java8
     container_name: namenode
+    ports:
+      - 9870:9870
     volumes:
-      - ./data/namenode:/hadoop/dfs/name
+      - hadoop_namenode:/hadoop/dfs/name
     environment:
       - CLUSTER_NAME=test
-      - HADOOP_HEAPSIZE=4096
     env_file:
-      - ./hadoop.env
-    ports:
-        - 50070:50070
+      - hadoop/hadoop.env
 
   datanode:
-    image: bde2020/hadoop-datanode:1.1.0-hadoop2.8-java8
-    depends_on:
-      - namenode
+    image: bde2020/hadoop-datanode:2.0.0-hadoop3.1.2-java8
+    container_name: datanode
     volumes:
-      - ./data/datanode:/hadoop/dfs/data
+      - hadoop_datanode:/hadoop/dfs/data
+    environment:
+      SERVICE_PRECONDITION: "namenode:9870"
     env_file:
-      - ./hadoop.env
-    ports:
-      - 50075:50075
+      - hadoop/hadoop.env
 
   spark-master:
     image: purbanow/spark-master:latest
     container_name: spark-master
     ports:
-      - "8089:8080"
-      - "7077:7077"
+      - 8089:8080
+      - 7077:7077
     env_file:
-      - ./hadoop.env
+      - hadoop/hadoop.env
 
   spark-worker-1:
     image: purbanow/spark-worker:latest
@@ -40,11 +38,11 @@ services:
     depends_on:
       - spark-master
     ports:
-      - "8084:8084"
+      - 8084:8081
     environment:
       - "SPARK_MASTER=spark://spark-master:7077"
     env_file:
-      - ./hadoop.env
+      - hadoop/hadoop.env
 
   spark-worker-2:
     image: purbanow/spark-worker:latest
@@ -52,9 +50,13 @@ services:
     depends_on:
       - spark-master
     ports:
-      - "8085:8085"
+      - 8085:8081
     environment:
-      - "SPARK_MASTER=spark://spark-master:7077"
+      - SPARK_MASTER=spark://spark-master:7077
     env_file:
-      - ./hadoop.env
+      - hadoop/hadoop.env
+
+volumes:
+  hadoop_namenode:
+  hadoop_datanode:
 
