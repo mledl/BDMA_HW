@@ -71,13 +71,13 @@ def print_statistics(stats, norm_data):
         os.rename(fileName, '../results/hw1_stats.csv')
         print('successfully created ../results/hw1_stats.csv')
 
-    cleanup("../results/tmp_stats", 1)
+    # cleanup("../results/tmp_stats", 1)
 
     new_col_names = ['Norm_global_active_power', 'Norm_global_reactive_power', 'Norm_voltage', 'Norm_global_intensity'];
     norm_data_print = norm_data.toDF(*new_col_names)
     norm_data_print.write.format("com.databricks.spark.csv").option("header", "true").mode('append').save("../results/tmp_norm")
     merge_files('../results/tmp_norm/part-0*.csv')
-    cleanup('../results/tmp_norm', 1)
+    # cleanup('../results/tmp_norm', 1)
 
 def merge_files(files):
     first = 1;
@@ -100,7 +100,7 @@ def merge_files(files):
 # Spark setup
 # for local testing
 #conf = SparkConf().setAppName('localTest')
-conf = SparkConf().setAppName('app').setMaster('spark://172.21.0.3:7077').setSparkHome('/spark/')
+conf = SparkConf().setAppName('app').setMaster('spark://spark-master:7077').setSparkHome('/spark/')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
@@ -136,6 +136,6 @@ min_max_df = df_3.rdd.map(lambda x:[float(y) for y in x['features_minmax']]).toD
 # create files and print
 print_statistics([global_active_power_stat, global_reactive_power_stat, voltage_stat, global_intensity_stat], min_max_df)
 
-print("global_active_power_stat", min_max_df.count())
 # for local testing
 #cleanup(tmpDir, 1)
+

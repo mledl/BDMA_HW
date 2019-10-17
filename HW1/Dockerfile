@@ -15,5 +15,6 @@ RUN cd /app \
 
 
 ENV SPARK_APPLICATION_PYTHON_LOCATION /app/app.py
+ENV SPARK_SUBMIT_ARGS "--conf spark.executor.memory=512m"
 
 CMD ["/bin/bash", "/template.sh"]
