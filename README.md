@@ -6,3 +6,5 @@ This repository holds all the pieces of homework done at the "Big Data Mining an
  * Python 3.7.3
  * Spark  2.4.4
  
+
+ 
