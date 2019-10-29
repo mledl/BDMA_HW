@@ -14,7 +14,8 @@ Multi-Source Social Feedback of Online News Feeds
 Nuno Moniz and Luís Torgo	
 The data set is made available under a CC-BY license
 
-REFERENCE
+## REFERENCE
+
   Nuno Moniz and Luís Torgo (2018), “Multi-Source Social Feedback of Online News Feeds”,
   CoRR, abs/1801.07055
   
@@ -27,7 +28,8 @@ REFERENCE
     journal = {CoRR},
   }
 
-VARIABLES OF NEWS DATA
+## VARIABLES OF NEWS DATA
+
   IDLink (numeric): Unique identifier of news items
   Title (string): Title of the news item according to the official media sources
   Headline (string): Headline of the news item according to the official media sources
@@ -40,7 +42,8 @@ VARIABLES OF NEWS DATA
   GooglePlus (numeric): Final value of the news items' popularity according to the social media source Google+
   LinkedIn (numeric): Final value of the news items' popularity according to the social media source LinkedIn
 
-VARIABLES OF SOCIAL FEEDBACK DATA
+## VARIABLES OF SOCIAL FEEDBACK DATA
+
   IDLink (numeric): Unique identifier of news items
   TS1 (numeric): Level of popularity in time slice 1 (0-20 minutes upon publication)
   TS2 (numeric): Level of popularity in time slice 2 (20-40 minutes upon publication)
