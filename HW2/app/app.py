@@ -142,7 +142,7 @@ df_timestamped_day = df_timestamped.groupBy('PublishDate1')\
 
 # df_timestamped_day = df_timestamped_day.withColumn('wc_pair_title',)
 
-test = df_timestamped_day.select('agg_title').rdd.map(lambda l: sc.parallelize(l)).collect()
+test = df_timestamped_day.select('agg_title').rdd.map(lambda l: wordCountTotal(sc.parallelize(l))).collect()
 
 print(test[0:20])
 
