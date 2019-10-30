@@ -124,8 +124,8 @@ df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline']) tutaj
 
 # count term frequency of title column and sort in descending order
 # in total
-title_counts_total = wordCountTotal(df_timestamped.select('Title'))
-headline_counts_total = wordCountTotal(df_timestamped.select('Headline'))
+title_counts_total = wordCountTotal(df_timestamped.select('Title').rdd)
+headline_counts_total = wordCountTotal(df_timestamped.select('Headline').rdd)
 
 # per day
 # create timestamp word pairs
