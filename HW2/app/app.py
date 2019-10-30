@@ -171,13 +171,13 @@ print(test[0:20])
 # calculate_average_popularity("google")
 # calculate_average_popularity("linkedin")
 
-# In news data, calculate the sum and average sentiment score of each topic, respectively, 8 values: {sum, avg} {4 topics}
 def calculate_sum_average_sentiment_score_by_topic(news):
     news = news.withColumn('sentiment', news.SentimentTitle + news.SentimentHeadline)
     sum = news.groupBy('Topic').sum("sentiment")
     average = news.groupBy('Topic').avg("sentiment")
     return sum.join(average, on=['Topic'])
 
+# TASK_3: In news data, calculate the sum and average sentiment score of each topic, respectively
 calculate_sum_average_sentiment_score_by_topic(df_news)\
     .show()
 
