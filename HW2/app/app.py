@@ -120,7 +120,7 @@ df_news = df_news.fillna({'Headline': ''})
 
 # parse the timestamp in order to make time windows
 df_news = df_news.withColumn('PublishDate1', F.to_date('PublishDate', "yyyy-MM-dd HH:mm:ss"))
-df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline'])
+df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline']) tutaj
 
 # count term frequency of title column and sort in descending order
 # in total
@@ -159,6 +159,27 @@ print(test[0:20])
 #        break
 #    i += 1
 
+
+# TODO
+#  In social feedback data, calculate the average popularity of each news by hour, and by day, respectively (for each platform)
+# def calculate_average_popularity(platform):
+#     return (byt_hour, by_day)
+#
+#
+#
+# calculate_average_popularity("facebook")
+# calculate_average_popularity("google")
+# calculate_average_popularity("linkedin")
+
+# In news data, calculate the sum and average sentiment score of each topic, respectively, 8 values: {sum, avg} {4 topics}
+def calculate_sum_average_sentiment_score_by_topic(news):
+    news = news.withColumn('sentiment', news.SentimentTitle + news.SentimentHeadline)
+    sum = news.groupBy('Topic').sum("sentiment")
+    average = news.groupBy('Topic').avg("sentiment")
+    return sum.join(average, on=['Topic'])
+
+calculate_sum_average_sentiment_score_by_topic(df_news)\
+    .show()
 
 # for local testing
 cleanup(tmpDir, 1)
