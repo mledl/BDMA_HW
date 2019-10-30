@@ -7,19 +7,8 @@ findspark.init()
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from zipfile import ZipFile
 
-
-# for local
-def extract_dataset(zipFilePath, tmpDir):
-    # extract dataset zip file into tmp directory
-    with ZipFile(zipFilePath, 'r') as zipObj:
-        fileNames = zipObj.namelist()
-        print('files in archive: ' + str(fileNames))
-        for fileName in fileNames:
-            zipObj.extract(fileName, tmpDir)
-            print('successfully extracted file: ' + fileName)
-
+data_dir = "../data/"
 
 def printNullValuesPerColumn(df):
     print('Number of Null values per column:')
@@ -98,14 +87,8 @@ conf = SparkConf().setAppName('localTest')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
-# Extracting datset and reading data
-# for local testing
-tmpDir = '../data/tmp/'
-# for local testing
-extract_dataset("../data/news_popularity_dataset.zip", tmpDir)
-
 # Note: it is important to excape the ", bc it is used in text and otherwise the file would be split up incorrectly
-df_news = spark.read.csv(tmpDir + "News_Final.csv", header=True, sep=",", escape='"',
+df_news = spark.read.csv(data_dir + "News_Final.csv", header=True, sep=",", escape='"',
                          timestampFormat='yyyy-MM-dd HH:mm:ss')
 # Read from production system
 # df = spark.read.csv("hdfs://namenode:9000/data/News_Final.csv", header=True, sep=",",
@@ -120,31 +103,31 @@ df_news = df_news.fillna({'Headline': ''})
 
 # parse the timestamp in order to make time windows
 df_news = df_news.withColumn('PublishDate1', F.to_date('PublishDate', "yyyy-MM-dd HH:mm:ss"))
-df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline']) tutaj
+df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline'])
 
 # count term frequency of title column and sort in descending order
 # in total
-title_counts_total = wordCountTotal(df_timestamped.select('Title').rdd)
-headline_counts_total = wordCountTotal(df_timestamped.select('Headline').rdd)
-
-# per day
-# create timestamp word pairs
-
-
-# group per day
-
-# df_timestamped.show()
-# group by timestamp and concatenate strings using aggregation, then split into the single words
-df_timestamped_day = df_timestamped.groupBy('PublishDate1')\
-                                    .agg(F.split(F.concat_ws(' ', F.collect_list('Title')), ' ').alias('agg_title'),
-                                         F.split(F.concat_ws(' ', F.collect_list('Headline')), ' ').alias('agg_headline'))\
-                                    .sort('PublishDate1')
-
-# df_timestamped_day = df_timestamped_day.withColumn('wc_pair_title',)
-
-test = df_timestamped_day.select('agg_title').rdd.map(lambda l: wordCountTotal(sc.parallelize(l))).collect()
-
-print(test[0:20])
+# title_counts_total = wordCountTotal(df_timestamped.select('Title').rdd) HERE
+# headline_counts_total = wordCountTotal(df_timestamped.select('Headline').rdd)
+#
+# # per day
+# # create timestamp word pairs
+#
+#
+# # group per day
+#
+# # df_timestamped.show()
+# # group by timestamp and concatenate strings using aggregation, then split into the single words
+# df_timestamped_day = df_timestamped.groupBy('PublishDate1')\
+#                                     .agg(F.split(F.concat_ws(' ', F.collect_list('Title')), ' ').alias('agg_title'),
+#                                          F.split(F.concat_ws(' ', F.collect_list('Headline')), ' ').alias('agg_headline'))\
+#                                     .sort('PublishDate1')
+#
+# # df_timestamped_day = df_timestamped_day.withColumn('wc_pair_title',)
+#
+# test = df_timestamped_day.select('agg_title').rdd.map(lambda l: wordCountTotal(sc.parallelize(l))).collect()
+#
+# print(test[0:20]) HERE
 
 # df_timestamped_day.show()
 
@@ -181,5 +164,3 @@ def calculate_sum_average_sentiment_score_by_topic(news):
 calculate_sum_average_sentiment_score_by_topic(df_news)\
     .show()
 
-# for local testing
-cleanup(tmpDir, 1)
