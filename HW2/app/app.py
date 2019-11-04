@@ -9,6 +9,9 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 
 data_dir = "../data/"
+hdfs_dir = "hdfs://namenode:9000/data/"
+dir_path = hdfs_dir
+
 
 def printNullValuesPerColumn(df):
     print('Number of Null values per column:')
@@ -87,12 +90,8 @@ conf = SparkConf().setAppName('localTest')
 sc = SparkContext(conf=conf)
 spark = SparkSession(sc).builder.getOrCreate()
 
-# Note: it is important to excape the ", bc it is used in text and otherwise the file would be split up incorrectly
-df_news = spark.read.csv(data_dir + "News_Final.csv", header=True, sep=",", escape='"',
+df_news = spark.read.csv(dir_path + "News_Final.csv", header=True, sep=",", escape='"',
                          timestampFormat='yyyy-MM-dd HH:mm:ss')
-# Read from production system
-# df = spark.read.csv("hdfs://namenode:9000/data/News_Final.csv", header=True, sep=",",
-# inferSchema=True)
 
 # analyse news_final dataset and print some stats
 # printNullValuesPerColumn(df_news)
@@ -104,6 +103,7 @@ df_news = df_news.fillna({'Headline': ''})
 # parse the timestamp in order to make time windows
 df_news = df_news.withColumn('PublishDate1', F.to_date('PublishDate', "yyyy-MM-dd HH:mm:ss"))
 df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline'])
+
 
 # count term frequency of title column and sort in descending order
 # in total
@@ -143,24 +143,54 @@ df_timestamped = df_news.select(['PublishDate1', 'Title', 'Headline'])
 #    i += 1
 
 
-# TODO
-#  In social feedback data, calculate the average popularity of each news by hour, and by day, respectively (for each platform)
-# def calculate_average_popularity(platform):
-#     return (byt_hour, by_day)
-#
-#
-#
-# calculate_average_popularity("facebook")
-# calculate_average_popularity("google")
-# calculate_average_popularity("linkedin")
+# TASK 2 In social feedback data, calculate the average popularity of each news by hour, and by day, respectively (for each platform)
+# By hour requires to calculate average on every 3 columns, by day requires to calculate average on every 72 columns
+def calculate_average_popularity(platform, number_of_col):
+    economy = spark.read.csv(dir_path + platform + "_Economy.csv", header=True, sep=",", escape='"')
+    microsoft = spark.read.csv(dir_path + platform + "_Microsoft.csv", header=True, sep=",", escape='"')
+    obama = spark.read.csv(dir_path + platform + "_Obama.csv", header=True, sep=",", escape='"')
+    palestine = spark.read.csv(dir_path + platform + "_Palestine.csv", header=True, sep=",", escape='"')
+    topics_data = economy.union(microsoft).union(obama).union(palestine)
 
+    def calculate_columns(start, skip):
+        columns = []
+        for i in range(start, start + skip):
+            columns.append('TS' + str(i))
+        return columns
+
+    def calculate_average(data, columns):
+        sum = 0
+        for i in columns:
+            sum += data[i]
+        return sum / len(columns)
+
+    for index, i in enumerate(range(1, 144, number_of_col)):
+        columns = calculate_columns(i, number_of_col)
+
+        topics_data = topics_data.withColumn('slot' + str(index), calculate_average(topics_data, columns))
+        topics_data = topics_data.drop(*columns)
+
+    topics_data \
+        .repartition(1) \
+        .write \
+        .mode("overwrite") \
+        .csv(dir_path + "results/" + platform + '_' + str(number_of_col) + '.csv', header=True)
+
+# TASK_3: In news data, calculate the sum and average sentiment score of each topic, respectively
 def calculate_sum_average_sentiment_score_by_topic(news):
     news = news.withColumn('sentiment', news.SentimentTitle + news.SentimentHeadline)
     sum = news.groupBy('Topic').sum("sentiment")
     average = news.groupBy('Topic').avg("sentiment")
     return sum.join(average, on=['Topic'])
 
-# TASK_3: In news data, calculate the sum and average sentiment score of each topic, respectively
-calculate_sum_average_sentiment_score_by_topic(df_news)\
+
+calculate_average_popularity("Facebook", 3)
+calculate_average_popularity("Facebook", 72)
+calculate_average_popularity("GooglePlus", 3)
+calculate_average_popularity("GooglePlus", 72)
+calculate_average_popularity("LinkedIn", 3)
+calculate_average_popularity("LinkedIn", 72)
+
+calculate_sum_average_sentiment_score_by_topic(df_news) \
     .show()
 
