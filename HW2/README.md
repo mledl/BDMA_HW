@@ -51,3 +51,7 @@ The data set is made available under a CC-BY license
   3. TS2 (numeric): Level of popularity in time slice 2 (20-40 minutes upon publication)
   4. TS... (numeric): Level of popularity in time slice ...
   5. TS144 (numeric): Final level of popularity after 2 days upon publication
+  
+  
+docker build --rm -t app .
+docker run -it --name app -e ENABLE_INIT_DAEMON=false --link spark-master:spark-master  --net docker_spark_hadoop_default  -d app
