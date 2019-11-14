@@ -1,19 +1,17 @@
-import glob
-import os
+from collections import defaultdict
 import findspark
-import json
+import pandas as pd
 
 findspark.init()
 
 from pyspark import SparkConf, SparkContext
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
-from pyspark.sql.types import StringType, StructType, StructField, IntegerType
-
+from pyspark.ml.feature import StopWordsRemover, Tokenizer
 
 data_dir = "../data/"
 hdfs_dir = "hdfs://namenode:9000/data/"
-dir_path = hdfs_dir
+dir_path = data_dir
 
 
 def printNullValuesPerColumn(df):
@@ -26,24 +24,45 @@ def printNanValuesPerColumn(df):
     df.select([F.count(F.when(F.isnan(c), c)).alias(c) for c in df.columns]).show()
 
 
-def wordCountTotal(rddCol):
-    words = rddCol.map(lambda r: r[0]).flatMap(lambda x: x.split(' '))
-    counts = words.map(lambda w: (w, 1)).reduceByKey(lambda x, y: x + y).sortBy(lambda wc: wc[1], False)
+def wordCountTotal(rddCol, col):
+    # calculate word counts in total
+    counts = rddCol.flatMap(lambda r: r[0]).\
+        map(lambda w: (w, 1)).\
+        reduceByKey(lambda x, y: x + y).\
+        sortBy(lambda wc: wc[1], False).toDF(['Word', 'Count'])
+
+    # write wordcounts to file
+    counts \
+        .repartition(1) \
+        .write \
+        .mode("overwrite") \
+        .csv(dir_path + "results/" + "wordcount_" + col + "_total", header=True)
+
     return counts.collect()
 
 
-def wordCountPerUnit(col, unit, df):
-    # create new column 'counts' that holds an array of all words per row (date)
-    df_timestamped_unit = df.withColumn('counts', F.struct(unit, F.split(F.col(col), ' ')))
-
+def wordCountPerUnit(col, unit, df_unit):
     # make ((date, word), 1) pairs and count their specific occurrence
-    rdd_count_per_unit = df_timestamped_unit.select('counts').rdd\
-        .map(lambda r: [((r[0][0], w), 1) for w in r[0][1]])\
+    rdd_count_per_unit = df_unit.select(unit, col).rdd \
+        .map(lambda r: [((r[0], w), 1) for w in r[1]]) \
         .flatMap(lambda l: [x for x in l]).reduceByKey(lambda x, y: x + y)
 
     # transform tuples to (date, (word, count)) and combine all per date and sort the tuples within the specific date
-    count_per_unit = rdd_count_per_unit.map(lambda r: (r[0][0], [(r[0][1], r[1])])).reduceByKey(lambda x, y: x + y)\
+    count_per_unit = rdd_count_per_unit.map(lambda r: (r[0][0], [(r[0][1], r[1])])).reduceByKey(lambda x, y: x + y) \
         .map(lambda t: (t[0], sorted(t[1], key=lambda x: -x[1])))
+
+    # format data to write sorted list to file
+    print_count_per_unit = count_per_unit.toDF([unit, 'Wordcount']).\
+        withColumn('Wordcount', F.explode(F.col('Wordcount'))).select(unit, 'Wordcount.*').\
+        toDF(unit, 'Word', 'Count')
+
+    # actually create file per group of lists
+    print_count_per_unit \
+        .repartition(1) \
+        .write \
+        .mode("overwrite") \
+        .csv(dir_path + "results/" + "wordcount_" + col + "_per_" + unit, header=True)
+
     return count_per_unit
 
 
@@ -64,19 +83,10 @@ def printWordcountPerKey(data, noOfElements, isDate):
 
 
 def generateCooccurrenceMatrices(data, df_all):
-    # specify schema of dataframe per topic
-    schema = StructType([StructField("words", StringType()), StructField("count", IntegerType())])
-
     # to dataframe and create top 100 column
     df_temp = data.toDF(['Topic', 'Tuples per Topic'])
-    all_tuples = df_temp.rdd.map(lambda r: (r[0], [w[0] for w in r[1]])).collect()
     df_temp = df_temp.withColumn('Top 100', F.slice('Tuples per Topic', start=1, length=100))
     count_tuples = df_temp.select(['Topic', 'Top 100']).rdd.map(lambda r: (r[0], [w[0] for w in r[1]])).collect()
-
-    # list of all titles per topic
-    titles_economy = df_all.select(['Title']).where(F.col('Topic').isin({'economy'})).rdd.flatMap(lambda r: r).collect()
-    df_titles_economy = spark.createDataFrame(titles_economy, "string").toDF('Title')
-    df_titles_economy = df_titles_economy.withColumn('Title', F.split(F.col('Title'), ' '))
 
     # lists of top100 words per topic
     economy_top100_words = count_tuples[0][1]
@@ -84,95 +94,65 @@ def generateCooccurrenceMatrices(data, df_all):
     palestine_top100_words = count_tuples[2][1]
     obama_top100_words = count_tuples[3][1]
 
-    def mapStripes(sentence, top100_words):
-        stripes = {}
-        #i = 0
+    def mapOcc(sentence, top100_words):
+        data_combs = []
         for word in top100_words:
             h = {}
-            for neigh in neighbors(word, sentence, top100_words):
-                h[neigh] = h.get(neigh, 0) + 1
-            stripes[word] = h
-            #i += 1
-            #if i == 5:
-            #    print(sentence)
-            #    print(json.dumps(stripes))
-            #    break
-        return stripes
+            if word in sentence:
+                for neigh in neighbors(sentence, top100_words, word):
+                    comb = (word, neigh)
+                    h[comb] = h.get(comb, 0) + 1
+                h[(word, word)] = 0
+                data_combs.extend(list(h.items()))
+        return data_combs
 
-    def neighbors(word, sentence, top100_words):
-        relevant_words = removeIrrelevantWords(top100_words, sentence)
-        return relevant_words if word in relevant_words else []
+    def neighbors(sentence, top100_words, word):
+        neighs = list(set(sentence) & set(top100_words))
+        neighs.remove(word)
+        return neighs
 
-    def removeIrrelevantWords(top100_words, l):
-        return list(set(l) & set(top100_words))
+    def generateCoocurrenceMatrix(col, topic, top100_words):
+        # list of all titles per topic
+        col_topic = df_all.select(col + '_sentence').where(F.col('Topic').isin({topic})).rdd.flatMap(
+            lambda r: r).collect()
+        df_col_topic = spark.createDataFrame(col_topic, "string").toDF(col)
+        df_col_topic = df_col_topic.withColumn(col, F.split(F.col(col), ' '))
 
-    def reduceStripes(word, stripes):
-        result = {}
-        print(stripes)
-        for stripe in stripes:
-            result = {k: result.get(k, 0) + stripe.get(k, 0) for k in set(result) | set(stripe)}
-        return result
+        # calculate co-occurrence stripes per title
+        economy_coocurrence = df_col_topic.rdd. \
+            flatMap(lambda r: mapOcc(r[0], top100_words)). \
+            reduceByKey(lambda x, y: x + y). \
+            map(lambda x: (x[0][0], [(x[0][1], int(x[1]))])). \
+            reduceByKey(lambda x, y: x + y).sortByKey().collect()
 
-    # calculate stripes per title
-    economy_coocurrence = df_titles_economy.rdd.map(lambda r: mapStripes(r[0], economy_top100_words))
+        # construct matrix from coocurrence stripes
+        as_matrix = defaultdict(dict)
+        for entry in economy_coocurrence:
+            topword = entry[0]
+            for cooc in sorted(entry[1]):
+                as_matrix[topword][cooc[0]] = cooc[1]
 
-    # combine
+        # use pandas to create a dataframe from matrix
+        pd_df_matrix = pd.DataFrame(as_matrix)
+        pd_df_matrix.insert(0, 'words', sorted(top100_words), True)
+        df_matrix = spark.createDataFrame(pd_df_matrix)
+        df_matrix = df_matrix.na.fill(0)
 
-    print(json.dumps(economy_coocurrence))
+        # write matrix to file
+        df_matrix \
+            .repartition(1) \
+            .write \
+            .mode("overwrite") \
+            .csv(dir_path + "results/" + "cooc_matrix_" + col + '_' + topic, header=True)
 
-
-def cleanup(dir, del_dir):
-    # delete tmp directory and file(s)
-    tmpFileList = [f for f in os.listdir(dir)]
-    for f in tmpFileList:
-        os.remove(os.path.join(dir, f))
-
-    if del_dir == 1:
-        os.rmdir(dir)
-
-    print('successfully deleted directory: ' + dir)
-
-
-def print_statistics(stats, norm_data):
-    df_print = spark.createDataFrame(stats, ['column_name', 'count', 'min', 'max', 'mean', 'std'])
-    df_print.show()
-
-    if os.path.exists('../results'):
-        cleanup('../results', 0)
-
-    df_print.repartition(1).write.format("com.databricks.spark.csv").option("header", "true").mode('overwrite').save(
-        "../results/tmp_stats")
-    for fileName in glob.glob('../results/tmp_stats/part-0000*.csv'):
-        os.rename(fileName, '../results/hw1_stats.csv')
-        print('successfully created ../results/hw1_stats.csv')
-
-    # cleanup("../results/tmp_stats", 1)
-
-    new_col_names = ['Norm_global_active_power', 'Norm_global_reactive_power', 'Norm_voltage', 'Norm_global_intensity'];
-    norm_data_print = norm_data.toDF(*new_col_names)
-    norm_data_print.write.format("com.databricks.spark.csv").option("header", "true").mode('append').save(
-        "../results/tmp_norm")
-    merge_files('../results/tmp_norm/part-0*.csv')
-    # cleanup('../results/tmp_norm', 1)
-
-
-def merge_files(files):
-    first = 1
-    with open('../results/hw1_min_max_normalization.csv', 'a') as targetFile:
-        print(glob.glob(files))
-        for fileName in glob.glob(files):
-            with open(fileName) as sourceFile:
-                m = sourceFile.readlines()
-                if first == 1:
-                    lines = m[0:]
-                    first = 0
-                else:
-                    lines = m[1:]
-
-                for line in lines:
-                    targetFile.write(line.rstrip() + '\n')
-
-    print('successfully merged data into file: ../results/hw1_min_max_normalization.csv')
+    generateCoocurrenceMatrix('Title', 'economy', economy_top100_words)
+    generateCoocurrenceMatrix('Title', 'microsoft', microsoft_top100_words)
+    generateCoocurrenceMatrix('Title', 'palestine', palestine_top100_words)
+    generateCoocurrenceMatrix('Title', 'obama', obama_top100_words)
+    generateCoocurrenceMatrix('Headline', 'economy', economy_top100_words)
+    generateCoocurrenceMatrix('Headline', 'microsoft', microsoft_top100_words)
+    generateCoocurrenceMatrix('Headline', 'palestine', palestine_top100_words)
+    generateCoocurrenceMatrix('Headline', 'obama', obama_top100_words)
 
 
 # Spark setup
@@ -189,10 +169,6 @@ noOfTuples = 20
 df_news = spark.read.csv(dir_path + "News_Final.csv", header=True, sep=",", escape='"',
                          timestampFormat='yyyy-MM-dd HH:mm:ss')
 
-# analyse news_final dataset and print some stats
-# printNullValuesPerColumn(df_news)
-# printNanValuesPerColumn(df_news)
-
 # fill null values in Headline with ''
 df_news = df_news.fillna({'Headline': ''})
 
@@ -201,46 +177,46 @@ df_news = df_news.withColumn('PublishDate1', F.to_date('PublishDate', "yyyy-MM-d
 df_timestamped = df_news.select(['PublishDate1', 'Topic', 'Title', 'Headline'])
 
 # drop duplicates
-df_timestamped = df_timestamped.dropDuplicates(['Title', 'Headline'])
+#df_timestamped = df_timestamped.dropDuplicates(['Title', 'Headline'])
 
+# remove punctuation from text data, text to lower case and trim whitespaces
+df_timestamped = df_timestamped.withColumn('Title', F.trim(F.lower(
+    F.regexp_replace(F.col('Title'), '[^\sa-zA-Z0-9]', ''))))
+df_timestamped = df_timestamped.withColumn('Headline', F.trim(F.lower(
+    F.regexp_replace(F.col('Headline'), '[^\sa-zA-Z0-9]', ''))))
+
+# tokenize titles and headlines
+title_tokenizer = Tokenizer(inputCol='Title', outputCol='Title_words')
+headline_tokenizer = Tokenizer(inputCol='Headline', outputCol='Headline_words')
+df_timestamped = title_tokenizer.transform(df_timestamped)
+df_timestamped = headline_tokenizer.transform(df_timestamped)
+
+# remove stop words
+titel_remover = StopWordsRemover(inputCol='Title_words', outputCol='Title_final')
+headline_remover = StopWordsRemover(inputCol='Headline_words', outputCol='Headline_final')
+df_timestamped = titel_remover.transform(df_timestamped)
+df_timestamped = headline_remover.transform(df_timestamped)
+
+# simplify dataframe
+df_timestamped = df_timestamped.select(F.col('PublishDate1').alias('PublishDate'),
+                                       F.col('Topic'),
+                                       F.col('Title_final').alias('Title'),
+                                       F.col('Headline_final').alias('Headline'),
+                                       F.col('Title').alias('Title_sentence'),
+                                       F.col('Headline').alias('Headline_sentence'))
 
 # count term frequency of title column and sort in descending order
 # in total
-title_counts_total = wordCountTotal(df_timestamped.select('Title').rdd)
-headline_counts_total = wordCountTotal(df_timestamped.select('Headline').rdd)
+title_counts_total = wordCountTotal(df_timestamped.select('Title').rdd, 'Title')
+headline_counts_total = wordCountTotal(df_timestamped.select('Headline').rdd, 'Headline')
 
 # per day
-title_counts_per_day = wordCountPerUnit('Title', 'PublishDate1', df_timestamped)
-headline_counts_per_day = wordCountPerUnit('Headline', 'PublishDate1', df_timestamped)
-
-
-print('###########################')
-print('  Wordcount Title per Day')
-print('###########################')
-# printWordcountPerKey(title_counts_per_day.collect(), noOfTuples, 1)
-print('###########################\n')
-
-print('###########################')
-print('Wordcount Headline per Day')
-print('###########################')
-# printWordcountPerKey(headline_counts_per_day.collect(), noOfTuples, 1)
-print('###########################\n')
+title_counts_per_day = wordCountPerUnit('Title', 'PublishDate', df_timestamped)
+headline_counts_per_day = wordCountPerUnit('Headline', 'PublishDate', df_timestamped)
 
 # per topic
 title_counts_per_topic = wordCountPerUnit('Title', 'Topic', df_timestamped)
 headline_counts_per_topic = wordCountPerUnit('Headline', 'Topic', df_timestamped)
-
-print('#############################')
-print('  Wordcount Title per Topic')
-print('#############################')
-# printWordcountPerKey(title_counts_per_topic.collect(), noOfTuples, 0)
-print('###########################\n')
-
-print('#############################')
-print('Wordcount Headline per Topic')
-print('#############################')
-# printWordcountPerKey(headline_counts_per_topic.collect(), noOfTuples, 0)
-print('###########################\n')
 
 # co-occurrence matrices for Title and Headline for top 100 words per Topic
 generateCooccurrenceMatrices(title_counts_per_topic, df_timestamped)
@@ -277,7 +253,8 @@ def calculate_average_popularity(platform, number_of_col):
         .repartition(1) \
         .write \
         .mode("overwrite") \
-        .csv(dir_path + "results/" + platform + '_' + str(number_of_col) + '.csv', header=True)
+        .csv(dir_path + "results/" + platform + '_' + str(number_of_col), header=True)
+
 
 # TASK_3: In news data, calculate the sum and average sentiment score of each topic, respectively
 def calculate_sum_average_sentiment_score_by_topic(news):
@@ -296,4 +273,3 @@ calculate_average_popularity("LinkedIn", 72)
 
 calculate_sum_average_sentiment_score_by_topic(df_news) \
     .show()
-
