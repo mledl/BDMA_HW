@@ -11,7 +11,7 @@ from pyspark.ml.feature import StopWordsRemover, Tokenizer
 
 data_dir = "../data/"
 hdfs_dir = "hdfs://namenode:9000/data/"
-dir_path = data_dir
+dir_path = hdfs_dir
 
 
 def printNullValuesPerColumn(df):
