@@ -1,16 +1,14 @@
 import org.apache.kafka.common.serialization.Serdes;
-import org.apache.kafka.common.utils.Bytes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.StreamsConfig;
 import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.KTable;
-import org.apache.kafka.streams.kstream.Materialized;
 import org.apache.kafka.streams.kstream.Produced;
-import org.apache.kafka.streams.state.KeyValueStore;
 import org.apache.log4j.Logger;
+import org.apache.spark.SparkConf;
+import org.apache.spark.api.java.JavaSparkContext;
+import org.apache.spark.ml.classification.DecisionTreeClassificationModel;
+import org.apache.spark.mllib.tree.model.DecisionTreeModel;
 
-import java.util.Arrays;
 import java.util.Properties;
 
 public class FraudTxsPredictor {
@@ -19,19 +17,22 @@ public class FraudTxsPredictor {
 
     public void run() {
 
+        DecisionTreeClassificationModel model = DecisionTreeClassificationModel.load("/Users/pawelurbanowicz/BDMA_HW/Project/modelbuilder/model");
+
         Properties props = KafkaConfiguration.getStreamProperties();
 
         StreamsBuilder builder = new StreamsBuilder();
-        KStream<String, String> txs = builder.stream(KafkaConfiguration.NEW_TXS_TOPIC);
-        KStream<String, String> fraud_txs = txs.filter((s, s2) -> {
-//TODO  call model
-            return true;
-        });
 
-        fraud_txs.to(KafkaConfiguration.FRAUD_TXS_TOPIC, Produced.with(Serdes.String(), Serdes.String()));
+        builder.stream(KafkaConfiguration.NEW_TXS_TOPIC)
+                .filter((value, key) -> {
+                    //TODO  call model , prepare input
+                    return true;
+                }).to(KafkaConfiguration.FRAUD_TXS_TOPIC);
 
-        KafkaStreams streams = new KafkaStreams(builder.build(), props);
-        streams.start();
+        new KafkaStreams(builder.build(), props)
+                .start();
+
+        logger.error("started");
     }
 
 }
