@@ -1,6 +1,10 @@
-# Report and ToDo's
 
-The Reports and ToDo's are managed via Google-Drive:
-https://docs.google.com/document/d/1N_UKlgGohHZXpln4wLSVmAgZYo6mHDzPKwiSeX_M7hg/edit?fbclid=IwAR1DC72F7gKzQ1nGgcpF2qZDg6h9zHiLrY6Rkinria1wcMLzUgwNXtHIiOo
 
- 
+
+kafkacat -C -b localhost:9092 -t new_txs
+kafkacat -P -b localhost:9092 -t topic
+
+
+./kafka-topics.sh --bootstrap-server localhost:9092 --delete --topic new_txs,fraud_txs
+
+./kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 1 --topic "new_txs"
