@@ -1,12 +1,13 @@
+import findspark
+findspark.init()
 from collections import defaultdict
 from typing import Tuple, List
-
 
 import numpy as np
 import pandas as pd
 from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
-from pyspark.sql.functions import regexp_replace, lower, col, split
+from pyspark.sql.functions import regexp_replace, split, lower, col
 from pyspark.sql.types import *
 import pyspark.sql.functions as f
 
@@ -17,7 +18,7 @@ run_spark_in_cluster = False      # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 k = 5  # parameter for number of k-shingles
 
 link_to_cluster_storage = "hdfs://namenode:9000"
-link_to_local_storage = "../data"
+link_to_local_storage = "C:/Users/Tobias/Docker/BDMA_HW"
 if(run_spark_in_cluster):
     path_to_write = ""
 else:
@@ -25,10 +26,8 @@ else:
 
 #######################################################################################################################
 
-
 def shingling(element, k):
     elem = np.array(element)
-    print(elem)
     for i in range(elem[0].size - k + 1):
         shingle = ""
         for j in range(i, i+k):
@@ -38,17 +37,6 @@ def shingling(element, k):
                 shingle = shingle + str(elem[0][j])
         yield shingle    # yield can return a sequence of objects/results
 
-
-#def set_representation(element, df_shingles):
-    #row_repr = defaultdict(dict)
-    #output = df_shingles.rdd.flatMap(lambda x: subFunction(x, element))
-    #print("Output: " + output)
-    #for shingle in shingles:
-    #    if shingle in element:
-    #        row_repr[shingle] = 1
-    #    else:
-    #        row_repr[shingle] = 0
-    #return output
 
 #######################################################################################################################
 
@@ -66,12 +54,11 @@ else:
         .getOrCreate()
     sqlContext = SQLContext(spark)
 
-
 df = spark.read \
     .format("com.databricks.spark.xml") \
     .option("rootTag", "<!DOCTYPE") \
     .option("rowTag", "BODY") \
-    .load(path_to_write + "/*.sgm")
+    .load(path_to_write + "/HW3/data/*")
 
 ### DATA CLEANING
 df = df.withColumn('content', regexp_replace('_corrupt_record', '\n', ' ')) # replace newline by one whitespace
@@ -82,11 +69,10 @@ df = df.withColumn('content', regexp_replace('content', ' +', ' ')) # replace mu
 df = df.withColumn('content', regexp_replace('content', ' reuter &#3;</body>', '')) # replace BODY tag at end of document
 df_split = df.withColumn('content', split(col('content'), " ").alias('content'))
 
-df.show()
 
 ### CREATE SHINGLES
 result_shingle = df_split.rdd.flatMap(lambda x: shingling(x, k)).distinct()
 document_list = df.collect()
 
 df_matrix = result_shingle.map(lambda x: ["1" if str(x) in str(document) else "0" for document in document_list]).toDF()
-df_matrix.coalesce(1).write.format('com.databricks.spark.csv').mode('overwrite').save(path_to_write + "/results/hw3/task1.csv", header='true', sep=" ")
+df_matrix.coalesce(1).write.format('com.databricks.spark.csv').mode('overwrite').save(path_to_write + "/HW3/data/results/task1.csv", header='true', sep=" ")
