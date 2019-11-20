@@ -17,7 +17,7 @@ run_spark_in_cluster = False      # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 k = 5  # parameter for number of k-shingles
 
 link_to_cluster_storage = "hdfs://namenode:9000"
-link_to_local_storage = "C:/Users/Tobias/Docker/big_data_mining"
+link_to_local_storage = "../data"
 if(run_spark_in_cluster):
     path_to_write = ""
 else:
@@ -25,8 +25,10 @@ else:
 
 #######################################################################################################################
 
+
 def shingling(element, k):
     elem = np.array(element)
+    print(elem)
     for i in range(elem[0].size - k + 1):
         shingle = ""
         for j in range(i, i+k):
@@ -64,11 +66,12 @@ else:
         .getOrCreate()
     sqlContext = SQLContext(spark)
 
+
 df = spark.read \
     .format("com.databricks.spark.xml") \
     .option("rootTag", "<!DOCTYPE") \
     .option("rowTag", "BODY") \
-    .load(path_to_write + "/data/hw3/*")
+    .load(path_to_write + "/*.sgm")
 
 ### DATA CLEANING
 df = df.withColumn('content', regexp_replace('_corrupt_record', '\n', ' ')) # replace newline by one whitespace
@@ -79,6 +82,7 @@ df = df.withColumn('content', regexp_replace('content', ' +', ' ')) # replace mu
 df = df.withColumn('content', regexp_replace('content', ' reuter &#3;</body>', '')) # replace BODY tag at end of document
 df_split = df.withColumn('content', split(col('content'), " ").alias('content'))
 
+df.show()
 
 ### CREATE SHINGLES
 result_shingle = df_split.rdd.flatMap(lambda x: shingling(x, k)).distinct()
