@@ -5,6 +5,7 @@ HW2/datasets/*.txt
 HW3/datasets/*.csv
 HW3/datasets/*.txt
 HW3/data/results/*
+HW3/data/*
 HW4/datasets/*.csv
 HW4/datasets/*.txt
 HW5/datasets/*.csv
