@@ -58,6 +58,8 @@ print("depth = ", dtModel.depth)
 print (dtModel)
 
 # Make predictions on test data using the Transformer.transform() method.
+
+
 predictions = dtModel.transform(testData)
 
 predictions.printSchema()

@@ -15,6 +15,5 @@ public class App {
                 new SparkConf()
                         .setAppName("kafkastreampredictor")
                         .setMaster("local");
-        JavaSparkContext jsc = new JavaSparkContext(sparkConf);
     }
 }

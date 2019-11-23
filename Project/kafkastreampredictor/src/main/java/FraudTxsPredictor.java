@@ -1,13 +1,7 @@
-import org.apache.kafka.common.serialization.Serdes;
 import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
-import org.apache.kafka.streams.kstream.KStream;
-import org.apache.kafka.streams.kstream.Produced;
 import org.apache.log4j.Logger;
-import org.apache.spark.SparkConf;
-import org.apache.spark.api.java.JavaSparkContext;
 import org.apache.spark.ml.classification.DecisionTreeClassificationModel;
-import org.apache.spark.mllib.tree.model.DecisionTreeModel;
 
 import java.util.Properties;
 
