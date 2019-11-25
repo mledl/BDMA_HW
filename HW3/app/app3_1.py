@@ -68,9 +68,9 @@ if(run_spark_in_cluster):
         .option("rowTag", "BODY") \
         .load(link_to_cluster_storage + "test/*")
 else:
-    spark = SparkSession.builder.appName('hw3').master('local') \
-        .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
-        .getOrCreate()
+    spark = SparkSession.builder.appName('hw3').master('local').getOrCreate()
+        #.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
+        #.getOrCreate()
     sqlContext = SQLContext(spark)
     df = spark.read \
         .format("com.databricks.spark.xml") \

@@ -37,7 +37,7 @@ else:
     spark = SparkSession.builder.appName('hw3').master('local').getOrCreate()
     sqlContext = SQLContext(spark)
     df = spark.read \
-        .format("com.databricks.csv") \
+        .format("com.databricks.spark.csv") \
         .load(path_to_write + "results/task1/task1.csv")
 
 df.printSchema()
