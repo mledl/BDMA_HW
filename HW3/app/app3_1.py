@@ -61,8 +61,7 @@ if(run_spark_in_cluster):
 else:
     spark = SparkSession.builder.appName('hw3').master('local')
 
-spark = spark.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
-    .getOrCreate()
+spark = spark.getOrCreate()
 
 sqlContext = SQLContext(spark)
 df = spark.read \
