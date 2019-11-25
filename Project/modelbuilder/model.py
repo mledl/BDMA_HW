@@ -86,6 +86,6 @@ cat_cols = ['id_12', 'id_13', 'id_14', 'id_15', 'id_16', 'id_17', 'id_18', 'id_1
             'R_emaildomain_3']
 
 for col in cat_cols:
-    if col in txs.ßcolumns:
+    if col in txs.columns:
         indexer = StringIndexer(inputCol=col, outputCol=col +"indexed")
         txs = indexer.fit(txs).transform(txs)

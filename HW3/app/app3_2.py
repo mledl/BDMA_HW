@@ -6,7 +6,8 @@ from pyspark.sql import SQLContext
 from pyspark.ml.feature import MinHashLSH
 from pyspark.ml.linalg import Vectors
 from pyspark.sql.functions import col
-
+from pyspark.ml.feature import VectorAssembler
+from pyspark import SparkConf, SparkContext
 
 #######################################################################################################################
 
@@ -28,28 +29,38 @@ else:
 #######################################################################################################################
 
 if(run_spark_in_cluster):
-    spark = SparkSession.builder.appName('hw3').master('spark://spark-master:7077').getOrCreate()
-    sqlContext = SQLContext(spark)
-    df = spark.read \
-        .format("com.databricks.csv") \
-        .load(link_to_cluster_storage + "results/task1/task1.csv")
+    conf = SparkConf().setAppName('hw3').setMaster('spark://spark-master:7077')
 else:
-    spark = SparkSession.builder.appName('hw3').master('local').getOrCreate()
-    sqlContext = SQLContext(spark)
-    df = spark.read \
-        .format("com.databricks.csv") \
-        .load(path_to_write + "results/task1/task1.csv")
+    conf = SparkConf().setAppName('hw3').setMaster('local')
 
-df.printSchema()
+sc = SparkContext(conf=conf)
+spark = SparkSession(sc).builder.getOrCreate()
+
+df = spark.read.csv(path_to_write + "results/task1/task1.csv", header=True, sep=" ", inferSchema=True)
+
 df.show()
-
-
-
 
 ################
 # ALL BELOW HERE ARE JUST IDEAS / FROM SPARK DOCUMENTATION
 ###############
+cols = df.columns
+cols.remove('_1')
 
+#  HERE TRANSPOSE DATAFRAME
+
+assembler = VectorAssembler(
+    inputCols=cols,
+    outputCol="features")
+
+df = assembler.transform(df)
+df = df.drop(*cols)
+
+mh = MinHashLSH(inputCol="features", outputCol="hashes", numHashTables=5)
+model = mh.fit(df)
+
+# Feature Transformation
+print("The hashed dataset where hashed values are stored in the column 'hashes':")
+e = model.transform(df)
 
 
 

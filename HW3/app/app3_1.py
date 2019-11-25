@@ -5,7 +5,6 @@ from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
 from pyspark.sql.functions import regexp_replace, split, lower, col
 from pyspark.sql.types import *
-import pyspark.sql.functions as f
 from pyspark.sql.functions import row_number, monotonically_increasing_id
 from pyspark.sql import Window
 
@@ -13,7 +12,7 @@ from pyspark.sql import Window
 
 run_spark_in_cluster = False      # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 
-k = 5  # parameter for number of k-shingles
+k = 3  # parameter for number of k-shingles
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/"
@@ -58,25 +57,19 @@ def convert_Output(x, doc_count):
 #######################################################################################################################
 
 if(run_spark_in_cluster):
-    spark = SparkSession.builder.appName('hw3').master('spark://spark-master:7077') \
-        .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
-        .getOrCreate()
-    sqlContext = SQLContext(spark)
-    df = spark.read \
-        .format("com.databricks.spark.xml") \
-        .option("rootTag", "<!DOCTYPE") \
-        .option("rowTag", "BODY") \
-        .load(link_to_cluster_storage + "test/*")
+    spark = SparkSession.builder.appName('hw3').master('spark://spark-master:7077')
 else:
-    spark = SparkSession.builder.appName('hw3').master('local') \
-        .config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
-        .getOrCreate()
-    sqlContext = SQLContext(spark)
-    df = spark.read \
-        .format("com.databricks.spark.xml") \
-        .option("rootTag", "<!DOCTYPE") \
-        .option("rowTag", "BODY") \
-        .load(path_to_write + "test/*")
+    spark = SparkSession.builder.appName('hw3').master('local')
+
+spark = spark.config("spark.jars.packages", "com.databricks:spark-xml_2.12:0.7.0") \
+    .getOrCreate()
+
+sqlContext = SQLContext(spark)
+df = spark.read \
+    .format("com.databricks.spark.xml") \
+    .option("rootTag", "<!DOCTYPE") \
+    .option("rowTag", "BODY") \
+    .load(path_to_write + "test/*")
 
 
 ### DATA CLEANING
