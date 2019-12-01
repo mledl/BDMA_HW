@@ -12,7 +12,7 @@ from pyspark.sql import Window
 
 run_spark_in_cluster = False      # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 
-k = 3  # parameter for number of k-shingles
+k = 2  # parameter for number of k-shingles
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/"
