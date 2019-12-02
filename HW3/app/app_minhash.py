@@ -3,22 +3,14 @@ import findspark
 findspark.init()
 
 from pyspark.sql import SparkSession
-from pyspark.sql import SQLContext
-from pyspark.ml.feature import MinHashLSH
-from pyspark.ml.linalg import Vectors
-from pyspark.sql.functions import col
-from pyspark.ml.feature import VectorAssembler
 from pyspark import SparkConf, SparkContext
 import random
 import numpy as np
-from pyspark.sql.functions import row_number
 from pyspark.accumulators import AccumulatorParam
 
 #######################################################################################################################
 
 run_spark_in_cluster = False  # SET THIS VARIABLE FOR TESTING VS PRODUCTION
-
-k = 5  # parameter for number of k-shingles
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/"
@@ -37,7 +29,7 @@ spark = SparkSession(sc).builder.getOrCreate()
 
 df = spark.read.csv(path_to_write + "results/task1/task1.csv", header=True, sep=" ", inferSchema=True)
 
-prime = 187219  # bigger than number of rows
+prime = 110641  # bigger than number of rows http://compoasso.free.fr/primelistweb/page/prime/liste_online_en.php
 numHashes = 100
 maxShingleNumber = df.count()
 
@@ -85,7 +77,7 @@ signaturesAccum = sc.accumulator(signatures, MatrixAccumulatorParam())
 def calcualte_signatures(elem):
     (row, index) = elem
 
-    if index % 100 == 0:
+    if index % 10000 == 0:
         print(index)
 
     hash_values = []
@@ -104,4 +96,5 @@ def calcualte_signatures(elem):
 df.rdd.zipWithIndex() \
     .foreach(calcualte_signatures)
 
+print(signaturesAccum.value)
 np.savetxt(path_to_write + "results/signatures.txt", signaturesAccum.value)
