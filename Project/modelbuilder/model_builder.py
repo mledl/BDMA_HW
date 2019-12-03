@@ -43,6 +43,7 @@ preppedDataDF = pipelineModel.transform(data)
 
 selectedcols = ["label", "features"] + data.columns
 dataset = preppedDataDF.select(selectedcols)
+dataset.show()
 
 # Train model with Training Data
 (trainingData, testData) = dataset.randomSplit([0.7, 0.3], seed=100)

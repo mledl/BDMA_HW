@@ -87,5 +87,9 @@ cat_cols = ['id_12', 'id_13', 'id_14', 'id_15', 'id_16', 'id_17', 'id_18', 'id_1
 
 for col in cat_cols:
     if col in txs.columns:
-        indexer = StringIndexer(inputCol=col, outputCol=col +"indexed")
+        print(col)
+        indexer = StringIndexer(inputCol=col, outputCol=col + "indexed")
         txs = indexer.fit(txs).transform(txs)
+
+txs.coalesce(1).write.format('com.databricks.spark.csv').mode('overwrite').save("../data/txs.csv", header='true', sep=",")
+print("FINISHED")
