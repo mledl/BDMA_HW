@@ -35,7 +35,7 @@ df.show()
 BAND_SIZE = 1
 
 partitions = round(df.count() / BAND_SIZE)
-threshold = 0.1
+threshold = 0.01
 rdd = df.repartition(partitions).rdd
 
 print("Number of partitions:", partitions)
@@ -77,3 +77,4 @@ for a, b in itertools.combinations(doc_buckets, 2):
 
     if len(intersection_docs) >= threshold and db_j_doc != db_i_doc:
         print("Pair", db_i_doc, db_j_doc, len(intersection_docs))
+
