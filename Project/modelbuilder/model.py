@@ -17,7 +17,7 @@ txs = transactions.join(identities, 'TransactionID', how='left').alias('txs')
 txs = txs.sample(False, 0.1, 42)
 
 number_of_txs = txs.count()
-
+print(number_of_txs)
 
 # Feature engineering, based on https://www.kaggle.com/artgor/eda-and-models
 
@@ -85,11 +85,17 @@ cat_cols = ['id_12', 'id_13', 'id_14', 'id_15', 'id_16', 'id_17', 'id_18', 'id_1
             'P_emaildomain_1', 'P_emaildomain_2', 'P_emaildomain_3', 'R_emaildomain_1', 'R_emaildomain_2',
             'R_emaildomain_3']
 
-for col in cat_cols:
-    if col in txs.columns:
-        print(col)
-        indexer = StringIndexer(inputCol=col, outputCol=col + "indexed")
-        txs = indexer.fit(txs).transform(txs)
+# print(cat_cols)
+# for col in cat_cols:
+#     print("be", col)
+#     if col in txs.columns:
+#         print(col)
+#         indexer = StringIndexer(inputCol=col, outputCol=col + "indexed")
+#         txs = indexer.fit(txs).transform(txs)
 
-txs.coalesce(1).write.format('com.databricks.spark.csv').mode('overwrite').save("../data/txs.csv", header='true', sep=",")
+txs.repartition(1) \
+    .write \
+    .mode("overwrite") \
+    .csv("../data/txs.csv", header=True)
+
 print("FINISHED")
