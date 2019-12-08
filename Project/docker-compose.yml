@@ -1,9 +1,36 @@
-version: "3"
+version: "3.5"
 networks:
   kafka-network:
     driver: "bridge"
 
 services:
+#  spark-master:
+#    image: bde2020/spark-master:2.4.4-hadoop2.7
+#    container_name: spark-master
+#    ports:
+#      - "8084:8080"
+#      - "7077:7077"
+#  spark-worker-1:
+#    image: bde2020/spark-worker:2.4.4-hadoop2.7
+#    container_name: spark-worker-1
+#    depends_on:
+#      - spark-master
+#    ports:
+#      - "8085:8081"
+#    environment:
+#      - "SPARK_MASTER=spark://spark-master:7077"
+#  spark-worker-2:
+#    image: bde2020/spark-worker:2.4.4-hadoop2.7
+#    container_name: spark-worker-2
+#    depends_on:
+#      - spark-master
+#    ports:
+#      - "8086:8081"
+#    environment:
+#      - "SPARK_MASTER=spark://spark-master:7077"
+#
+#
+
 #  namenode:
 #    image: bde2020/hadoop-namenode:2.0.0-hadoop3.1.2-java8
 #    container_name: namenode
@@ -15,7 +42,7 @@ services:
 #    environment:
 #      - CLUSTER_NAME=test
 #    env_file:
-#      - hadoop/hadoop.env
+#      - hadoop.env
 #
 #  datanode:
 #    image: bde2020/hadoop-datanode:2.0.0-hadoop3.1.2-java8
@@ -25,40 +52,7 @@ services:
 #    environment:
 #      SERVICE_PRECONDITION: "namenode:9870"
 #    env_file:
-#      - hadoop/hadoop.env
-#
-#  spark-master:
-#    image: purbanow/spark-master:latest
-#    container_name: spark-master
-#    ports:
-#      - 8089:8080
-#      - 7077:7077
-#    env_file:
-#      - hadoop/hadoop.env
-#
-#  spark-worker-1:
-#    image: purbanow/spark-worker:latest
-#    container_name: spark-worker-1
-#    depends_on:
-#      - spark-master
-#    ports:
-#      - 8084:8081
-#    environment:
-#      - "SPARK_MASTER=spark://spark-master:7077"
-#    env_file:
-#      - hadoop/hadoop.env
-#
-#  spark-worker-2:
-#    image: purbanow/spark-worker:latest
-#    container_name: spark-worker-2
-#    depends_on:
-#      - spark-master
-#    ports:
-#      - 8085:8081
-#    environment:
-#      - SPARK_MASTER=spark://spark-master:7077
-#    env_file:
-#      - hadoop/hadoop.env
+#      - hadoop.env
 
   zookeeper:
     image: wurstmeister/zookeeper
@@ -75,13 +69,35 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: 192.168.50.187 # ifconfig | grep 'inet 192'| awk '{ print $2}'
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
-      KAFKA_MAX_REQUEST_SIZE: 2000000
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - kafka-network
 
+#  model-service:
+#    image: model-service
+#    container_name: model-service
+#    depends_on:
+#      - kafka
+#    networks:
+#      - kafka-network
+
+#  tx-generator:
+#    image: tx-generator
+#    container_name: tx-generator
+#    depends_on:
+#      - kafka
+#    networks:
+#      - kafka-network
+
+#  spark-app:
+#    image: spark-app
+#    container_name: spark-app
+#    depends_on:
+#      - kafka
+#    networks:
+#      - kafka-network
+
 volumes:
   hadoop_namenode:
   hadoop_datanode:
-
