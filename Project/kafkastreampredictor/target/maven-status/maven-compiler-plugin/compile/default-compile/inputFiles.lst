@@ -1,3 +1,4 @@
-/Users/pawelurbanowicz/BDMA_HW/Project/kafkastreampredictor/src/main/java/App.java
-/Users/pawelurbanowicz/BDMA_HW/Project/kafkastreampredictor/src/main/java/KafkaConfiguration.java
-/Users/pawelurbanowicz/BDMA_HW/Project/kafkastreampredictor/src/main/java/FraudTxsPredictor.java
+/Users/pawelurbanowicz/master-thesis/kafkastreampredictor/src/main/java/App.java
+/Users/pawelurbanowicz/master-thesis/kafkastreampredictor/src/main/java/FraudTxsPredictor.java
+/Users/pawelurbanowicz/master-thesis/kafkastreampredictor/src/main/java/FraudPredictionModel.java
+/Users/pawelurbanowicz/master-thesis/kafkastreampredictor/src/main/java/KafkaConfiguration.java
