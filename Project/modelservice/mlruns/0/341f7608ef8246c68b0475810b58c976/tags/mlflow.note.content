@@ -1,0 +1,13 @@
+inputs = Input(shape=(X.shape[1],))
+dense_1 = Dense(10, activation='relu')(inputs)
+dense_2 = Dense(10, activation='relu')(dense_1)
+outputs = Dense(1, activation='sigmoid')(dense_2)
+
+def label_encode(data):
+    data = data.fillna(0)
+    for col in data.columns:
+        le = LabelEncoder()
+        data[col] = le.fit_transform(list(data[col].astype(str).values))
+    return data
+
+all_features

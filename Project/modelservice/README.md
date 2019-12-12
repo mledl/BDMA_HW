@@ -5,10 +5,15 @@ endpoint.
 ### Local development
     /Users/pawelurbanowicz/venv/bin/python setup.py install
     python3 app.py
+    
 ### Production deploy
     docker build -t model-service .
     docker run -it --rm -p 5000:5000 --network master-thesis_kafka-network --name model-service model-service
 
+### MlFlow
+    export MLFLOW_EXPERIMENT_NAME=complex-model
+    sudo mlflow experiments create --experiment-name complex-model
+    
 ### Architecture 
 Batch approach of training model + realtime serving through REST endpoint.
 
