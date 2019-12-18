@@ -1,7 +1,5 @@
 import joblib
 import pandas as pd
-import tensorflow as tf
-import json
 
 from flask import Flask, jsonify, request, make_response
 from tensorflow import keras
@@ -14,10 +12,10 @@ graph = get_default_graph()
 
 app = Flask(__name__)
 
-model = keras.models.load_model("assets/fraud_prediction_model.h5")
+model = keras.models.load_model("assets/model.h5")
 transformer = joblib.load("assets/data_transformer.joblib")
 
-@app.route("v1/predict_fraud", methods=["POST"])
+@app.route("/v1/predict_fraud", methods=["POST"])
 def index():
     global sess
     global graph

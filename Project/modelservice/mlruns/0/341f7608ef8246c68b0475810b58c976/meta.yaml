@@ -1,0 +1,15 @@
+artifact_uri: file:///Users/pawelurbanowicz/master-thesis/modelservice/mlruns/0/341f7608ef8246c68b0475810b58c976/artifacts
+end_time: null
+entry_point_name: ''
+experiment_id: '0'
+lifecycle_stage: active
+name: ''
+run_id: 341f7608ef8246c68b0475810b58c976
+run_uuid: 341f7608ef8246c68b0475810b58c976
+source_name: ''
+source_type: 4
+source_version: ''
+start_time: 1575820791969
+status: 1
+tags: []
+user_id: root
