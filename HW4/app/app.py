@@ -285,6 +285,8 @@ def user_user_based_recommendation(df_k_similar_user, df_r, df_m):
     sum_weights = df_k_similar_user.select(sum(col('similarity'))).collect()[0][0]
     df_k_similar_user = df_k_similar_user.withColumn('sum_weights', lit(sum_weights))
 
+    df_k_similar_user.show()
+
     # join the movie ratings
     df_user_movie_ratings = df_k_similar_user.alias("df1").join(df_r, df_k_similar_user.UserID == df_r.UserID)\
         .select('df1.UserID', 'MovieID', 'Rating', 'similarity', 'sum_weights')
@@ -422,7 +424,7 @@ df_movies = spark.sparkContext.textFile('../data/movies.dat')\
 # the cosine similarity of previous ratings each user has given.
 # (sorted in descending order of ‘user’ similarity score)
 # calculate similarities to user k and store data to csv in format <user, similarity>
-df_top_sim_users = top_similar_users(df_ratings, user, k_user)
+#df_top_sim_users = top_similar_users(df_ratings, user, k_user)
 
 # sub task 3: Given any movie, please list the top-’similar’ movies based on
 # the cosine similarity of previous ratings each movie received.
@@ -437,7 +439,7 @@ df_top_sim_users = top_similar_users(df_ratings, user, k_user)
 # filtering: item-based, and user-based. (sorted in descending order of similarity score)
 # (a) For item-based collaborative filtering: estimated by similar items
 # (b) For user-based collaborative filtering: estimated by similar users
-#df_top_sim_users = spark.read.csv('../data/sim_users.csv', header=True, sep=",").toDF('UserID', 'similarity').limit(k_user)
+df_top_sim_users = spark.read.csv('../data/sim_users.csv', header=True, sep=",").toDF('UserID', 'similarity').limit(k_user)
 user_user_based_recommendation(df_top_sim_users, df_ratings, df_movies)
 
 #df_top_sim_movies = spark.read.csv('../data/sim_movies.csv', header=True, sep=",").toDF('Title', 'similarity')
