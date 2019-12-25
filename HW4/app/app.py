@@ -4,10 +4,8 @@ findspark.init()
 from pyspark.sql import SparkSession
 from pyspark.sql import SQLContext
 from pyspark.sql.functions import count, sum, desc, col, expr, lit, array
-from sklearn.metrics.pairwise import cosine_similarity
 from numpy import dot
 from numpy.linalg import norm
-import collections
 
 #######################################################################################################################
 
@@ -15,8 +13,9 @@ run_spark_in_cluster = False      # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 
 k_user = 100
 k_item = 20
-movie_limit = 2
+movie_limit = 10
 user = 1
+movie = 2000
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/results"
@@ -90,133 +89,6 @@ def top_similar_users(df_r, user, k_user):
         .save(path_to_write + "/task2", header='true', sep=',')
 
     return df_user_similarity.limit(k_user)
-
-
-def top_similar_movies2(df_r, df_m, k_item, user, movie):
-    # just take user into account that also rated the given movie
-    #user_rated_movie = [int(r[0]) for r in df_r.where(col('MovieID') == movie).select('UserID').collect()]
-    #df_r_data = df_r.where(col('UserID').isin(user_rated_movie))
-    df_r_data = df_r
-
-    # normalize the movie ratings by movie means
-    df_movie_avg = df_r_data.groupBy('MovieID')\
-        .agg(sum('Rating')/count('Rating'))\
-        .withColumnRenamed('(sum(Rating) / count(Rating))', 'avg_rating')
-
-    df_r = df_r_data.alias("df1").join(df_movie_avg.alias("df2"), df_r.MovieID == df_movie_avg.MovieID) \
-        .select("df1.UserID", "df1.MovieID", "df1.Rating", "df2.avg_rating") \
-        .withColumn("norm_rating", col('Rating') - col('avg_rating')) \
-        .select("UserID", "MovieID", "norm_rating")
-
-    # create pivot matrix MovieID/UserID with normalized ratings as values
-    df_movie_user_ratings = df_r.groupBy("MovieID") \
-        .pivot("UserID") \
-        .agg(expr("coalesce(first(norm_rating),0)").cast("double"))\
-        .fillna(0)
-
-    df_movie_user_ratings.show(1)
-
-    # make df for the given movie and one for all the others
-    df_movie = df_movie_user_ratings.filter(df_movie_user_ratings.MovieID == movie)
-    df_other_movies = df_movie_user_ratings.filter(df_movie_user_ratings.MovieID != movie)
-
-    # cosine similarity between dedicated user and all the others
-    pd_movie = df_movie.toPandas()
-    pd_other_movies = df_other_movies.toPandas()
-    cos_similarities = cosine_similarity(pd_movie, pd_other_movies)[0]
-    cos_similarities = [float(cos_sim) for cos_sim in cos_similarities]
-    pd_other_movies['similarity'] = [float(cos_sim) for cos_sim in cos_similarities]
-
-    # create spark dataframe from pandas
-    df_movie_similarity = spark.createDataFrame(pd_other_movies[['MovieID', 'similarity']])
-    df_movie_similarity = df_movie_similarity.alias("df1").join(df_m.alias("df2"), df_movie_similarity.MovieID == df_m.MovieID)\
-        .select(['df2.MovieID', 'df2.Title', 'similarity'])
-
-    # sort descending by similarity
-    df_movie_similarity = df_movie_similarity.sort(col('similarity').desc())
-
-    # write to file
-    df_movie_similarity\
-        .select(['Title', 'similarity']) \
-        .coalesce(1) \
-        .write \
-        .format('com.databricks.spark.csv') \
-        .mode('overwrite') \
-        .save(path_to_write + "/task3", header='true', sep=',')
-
-    # get similar movies that has also been rated by user
-    movies_rated_by_user = [int(r[0]) for r in df_r.filter(col('UserID') == user).select(['MovieID']).collect()]
-    df_sim_movies_rated_by_user = df_movie_similarity.filter(col('MovieID').isin(movies_rated_by_user))
-
-    return df_sim_movies_rated_by_user.limit(k_item)
-
-
-def top_similar_movies1(df_r, df_m, k_item, user, movie):
-    # get items rated by user
-    df_movies_rated_by_user = df_r.filter(col('UserID') == user)
-    movies_rated_by_user = [int(row[0]) for row in df_movies_rated_by_user.select('MovieID').collect()]
-    df_movies_unrated_by_user = df_m.filter(col('MovieID').isin(*movies_rated_by_user) == False)
-    movies_unrated_by_user = [int(row[0]) for row in df_movies_unrated_by_user.select('MovieID').collect()]
-
-    # normalize the movie ratings by movie means
-    df_movie_avg = df_r.groupBy('MovieID') \
-        .agg(sum('Rating') / count('Rating')) \
-        .withColumnRenamed('(sum(Rating) / count(Rating))', 'avg_rating')
-
-    df_r = df_r.alias("df1").join(df_movie_avg.alias("df2"), df_r.MovieID == df_movie_avg.MovieID) \
-        .select("df1.UserID", "df1.MovieID", "df1.Rating", "df2.avg_rating") \
-        .withColumn("norm_rating", col('Rating') - col('avg_rating')) \
-        .select("UserID", "MovieID", "norm_rating")
-
-    # create pivot matrix MovieID/UserID with normalized ratings as values
-    df_movie_user_ratings = df_r.groupBy("MovieID") \
-        .pivot("UserID") \
-        .agg(expr("coalesce(first(norm_rating),0)").cast("double")) \
-        .fillna(0)
-
-    # create column of list of ratings per movie
-    df_movie_user_ratings_vec = df_movie_user_ratings \
-        .withColumn('rate_vec', array([x for x in df_movie_user_ratings.columns if x != 'MovieID'])) \
-        .select('MovieID', 'rate_vec')
-
-    # split items in two sets, rated and unrated by given user
-    df_movies_rated_by_user = df_movie_user_ratings_vec.filter(col('MovieID').isin(*movies_rated_by_user))
-    df_movies_unrated_by_user = df_movie_user_ratings_vec.filter(col('MovieID').isin(*movies_unrated_by_user))
-    print('movies rated: ' + str(df_movies_rated_by_user.count()))
-    print('movies unrated: ' + str(df_movies_unrated_by_user.count()))
-
-    # optimize similarity calculation by focusing on co rated movies
-    #def co_rated_movies(movieid):
-    #    user_rated_movie = [int(row[0]) for row in df_r.filter(col('MovieID') == movieid).select('UserID').collect()]
-    #    co_rated_movies_list = [int(row['MovieID']) for row in df_r.filter(col('UserID').isin(*user_rated_movie)).collect()]
-    #    co_rated_movies_list = list(dict.fromkeys(co_rated_movies_list))
-    #    if movieid in co_rated_movies_list:
-    #        co_rated_movies_list.remove(movieid)
-    #    print(movieid)
-    #    print(user_rated_movie)
-    #    print(co_rated_movies_list)
-    #    return df_movies_rated_by_user.filter(df_movie_user_ratings_vec['MovieID'].isin(*co_rated_movies_list))
-
-    # modified cosine similarity function to use with map
-    def cos_sim_item(movieid, a, b, b_norm):
-        a_norm = norm(a)
-        if a_norm == 0:
-            return movieid, 0
-        cos = dot(a, b) / (a_norm * b_norm)
-        return movieid, cos.item()
-
-    # calculate similarity to every rated movie for every unrated movie by given user
-    item_similarities_dict = collections.defaultdict()
-    for row in df_movies_unrated_by_user.collect():
-        #df_co_rated = co_rated_movies(row['MovieID'])
-        given_movie_norm = norm(row['rate_vec'])
-        print(given_movie_norm)
-        if given_movie_norm != 0:
-            item_similarities_dict[row['MovieID']] = df_movies_rated_by_user\
-                .rdd\
-                .map(lambda r: cos_sim_item(r['MovieID'], r['rate_vec'], row['rate_vec'], given_movie_norm))\
-                .collect()
-            print(item_similarities_dict)
 
 
 def get_normalized_movie_df(df_r):
@@ -342,6 +214,7 @@ def item_item_based_recommendation(df_r, df_m, df_norm_vec, user, movie_limit):
             .collect()
 
         predictions.append((movieid, movieid_prediction[0][1]))
+        print((movieid, movieid_prediction[0][1]))
 
     # create dataframe from predictions
     df_movie_recommendations = spark.createDataFrame(predictions).toDF('MovieID', 'prediction')
@@ -368,7 +241,7 @@ if run_spark_in_cluster:
 else:
     spark = SparkSession.builder.appName('hw4').master('local')
 
-spark = spark.getOrCreate()
+spark = spark.config("spark.sql.broadcastTimeout", "100000").getOrCreate()
 sqlContext = SQLContext(spark)
 
 # read in the data from dat files and just take needed columns
@@ -418,28 +291,27 @@ df_movies = spark.sparkContext.textFile('../data/movies.dat')\
 
 # sub task 1: list the top-rated movies based on the ‘average’ rating score.
 # (sorted in descending order of ‘average’ rating score)
-#toprated_movies_based_on_average_rating(df_ratings)
+toprated_movies_based_on_average_rating(df_ratings)
 
 # sub task 2: Given any user, please list the top-’similar’ users based on
 # the cosine similarity of previous ratings each user has given.
 # (sorted in descending order of ‘user’ similarity score)
 # calculate similarities to user k and store data to csv in format <user, similarity>
-#df_top_sim_users = top_similar_users(df_ratings, user, k_user)
+df_top_sim_users = top_similar_users(df_ratings, user, k_user)
 
 # sub task 3: Given any movie, please list the top-’similar’ movies based on
 # the cosine similarity of previous ratings each movie received.
 # (sorted in descending order of ‘item’ similarity score)
 # calculate similarities to movie k and store data to csv in format <movie, similarity>
 # get movie that has not been rated by user
-#movie = 1
-#df_norm_movie_pivot = get_normalized_movie_df(df_ratings)
-#df_movie_sim_to_movie1 = top_similar_movies2(df_ratings, df_norm_movie_pivot, k_item, user, movie, True)
+df_norm_movie_pivot = get_normalized_movie_df(df_ratings)
+df_movie_sim_to_movie1 = top_similar_movies(df_ratings, df_norm_movie_pivot, k_item, user, movie, True)
 
 # sub task 4: Please implement a recommender system that recommends movies for a given user based on collaborative
 # filtering: item-based, and user-based. (sorted in descending order of similarity score)
 # (a) For item-based collaborative filtering: estimated by similar items
 # (b) For user-based collaborative filtering: estimated by similar users
-df_top_sim_users = spark.read.csv('../data/sim_users.csv', header=True, sep=",").toDF('UserID', 'similarity').limit(k_user)
+#df_top_sim_users = spark.read.csv('../data/sim_users.csv', header=True, sep=",").toDF('UserID', 'similarity').limit(k_user)
 user_user_based_recommendation(df_top_sim_users, df_ratings, df_movies)
 
 #df_top_sim_movies = spark.read.csv('../data/sim_movies.csv', header=True, sep=",").toDF('Title', 'similarity')
@@ -452,4 +324,4 @@ user_user_based_recommendation(df_top_sim_users, df_ratings, df_movies)
 #    .sort(col('similarity').desc())\
 #    .limit(k_item)
 #df_top_sim_movies.show()
-#item_item_based_recommendation(df_ratings, df_movies, df_norm_movie_pivot, user, movie_limit)
+item_item_based_recommendation(df_ratings, df_movies, df_norm_movie_pivot, user, movie_limit)
