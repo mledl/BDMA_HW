@@ -1,4 +1,6 @@
 FraudTxsPredictor.class
 KafkaConfiguration.class
+dto/FraudPredictionDTO.class
+AppProperties.class
 FraudPredictionModel.class
 App.class

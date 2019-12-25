@@ -33,6 +33,8 @@ public class FraudPredictionModel {
             e.printStackTrace();
         }
 
+        logger.info("Response: " + response.body());
+        logger.info("Response: " + response.headers());
         FraudPredictionDTO fraudPrediction = new Gson().fromJson(response.body(), FraudPredictionDTO.class);
 
         logger.info("Response: " + fraudPrediction);

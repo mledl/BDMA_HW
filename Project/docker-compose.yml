@@ -56,6 +56,7 @@ services:
 
   zookeeper:
     image: wurstmeister/zookeeper
+    container_name: zookeeper
     ports:
       - "2181:2181"
     networks:
@@ -69,18 +70,27 @@ services:
     environment:
       KAFKA_ADVERTISED_HOST_NAME: 192.168.50.187 # ifconfig | grep 'inet 192'| awk '{ print $2}'
       KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_CREATE_TOPICS: "new_txs:1:1,fraud_txs:1:1"
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
       - kafka-network
 
-#  model-service:
-#    image: model-service
-#    container_name: model-service
-#    depends_on:
-#      - kafka
-#    networks:
-#      - kafka-network
+  model-service:
+    image: model-service
+    container_name: model-service
+    ports:
+      - "5000:5000"
+    networks:
+      - kafka-network
+
+  kafka-stream-predictor:
+    image: kafka-stream-predictor
+    container_name: kafka-stream-predictor
+    depends_on:
+      - kafka
+    networks:
+      - kafka-network
 
 #  tx-generator:
 #    image: tx-generator

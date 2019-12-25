@@ -4,6 +4,7 @@ import org.apache.kafka.streams.KafkaStreams;
 import org.apache.kafka.streams.StreamsBuilder;
 import org.apache.log4j.Logger;
 
+
 import java.util.Properties;
 
 public class FraudTxsPredictor {
@@ -13,18 +14,18 @@ public class FraudTxsPredictor {
 
     public void run() {
 
-        Properties props = KafkaConfiguration.getStreamProperties();
+        Properties props = KafkaUtils.getStreamProperties();
 
         StreamsBuilder builder = new StreamsBuilder();
 
-        builder.stream(KafkaConfiguration.NEW_TXS_TOPIC)
+        builder.stream(KafkaUtils.NEW_TXS_TOPIC)
                 .filter((key, value) -> {
                     String tx = new JsonParser().parse(value.toString()).getAsString();
 
                     FraudPredictionDTO fraudPrediction = FraudPredictionModel.makePrediction(tx);
 
                     return fraudPrediction.getScore() > FRAUD_SCORE_THRESHOLD;
-                }).to(KafkaConfiguration.FRAUD_TXS_TOPIC);
+                }).to(KafkaUtils.FRAUD_TXS_TOPIC);
 
         new KafkaStreams(builder.build(), props)
                 .start();
