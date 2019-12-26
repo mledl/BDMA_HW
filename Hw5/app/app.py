@@ -13,7 +13,7 @@ run_spark_in_cluster = False  # SET THIS VARIABLE FOR TESTING VS PRODUCTION
 dataset_path = "../data/web-Google.txt"
 dataset_path_mini = "../data/web-Google-mini.txt"
 
-task3_node = 4
+task3_node = 1
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/results"
@@ -79,8 +79,6 @@ def node_connectivity(df_l, node):
     # create a dataframe holding those lists
     df_node_out_in_links = spark.sparkContext.parallelize(node_out_in_links).toDF().toDF('Description', 'Nodes')
 
-    df_node_out_in_links.show()
-
     # write the lists to file
     df_node_out_in_links \
         .select(col('Nodes').cast(StringType()))\
@@ -102,15 +100,18 @@ spark = spark.config("spark.sql.broadcastTimeout", "36000").getOrCreate()
 sqlContext = SQLContext(spark)
 
 # read in the data from text file and parse from and to node IDs
-df_links = spark.read.csv(dataset_path_mini, sep='\t', comment="#", inferSchema=True).toDF('FromNodeId', 'ToNodeId')
+df_links = spark.read.csv(dataset_path, sep='\t', comment="#", inferSchema=True).toDF('FromNodeId', 'ToNodeId')
 
 # Task 1: Given the Google web graph dataset, please output the list of web pages with the number of outlinks,
 # sorted in descending order of the out-degrees.
-# web_pages_sorted_by_outlinks(df_links)
+web_pages_sorted_by_outlinks(df_links)
 
-# Task 2: Please output the inlink distribution of the top linked web pages, sorted in descending order of the in-degrees.
+# Task 2: Please output the inlink distribution of the top linked web pages,
+# sorted in descending order of the in-degrees.
 web_pages_sorted_by_inlinks(df_links)
 
 # Task 3: Design an algorithm that maintains the connectivity of two nodes in an efficient way.
 # Given a node v, please output the list of nodes that v points to, and the list of nodes that points to v.
 node_connectivity(df_links, task3_node)
+
+# Task 4:
