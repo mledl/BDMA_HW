@@ -1,0 +1,4 @@
+App.class
+KafkaCustomUtils.class
+AppProperties.class
+FraudSparkPrediction.class
