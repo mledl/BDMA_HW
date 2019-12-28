@@ -14,7 +14,7 @@ dataset_path = "../data/web-Google.txt"
 dataset_path_mini = "../data/web-Google-mini.txt"
 
 task3_node = 1
-no_of_updates = 15
+no_of_updates = 52
 weight = 0.85
 offset = 0.15
 
