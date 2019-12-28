@@ -14,6 +14,9 @@ dataset_path = "../data/web-Google.txt"
 dataset_path_mini = "../data/web-Google-mini.txt"
 
 task3_node = 1
+no_of_updates = 15
+weight = 0.85
+offset = 0.15
 
 link_to_cluster_storage = "hdfs://namenode:9000"
 link_to_local_storage = "../data/results"
@@ -88,6 +91,54 @@ def node_connectivity(df_l, node):
         .mode('overwrite') \
         .save(path_to_write + "/task3", header='false', sep=',')
 
+
+def node_probabilities(toNodes, rank):
+    # calculate no of out-links for current from node
+    no_of_links = len(toNodes)
+
+    # yield to node and probability paris
+    for toNode in toNodes:
+        yield toNode, rank/no_of_links
+
+
+def page_rank(df_l):
+   # extract unique links as tuples and group them by their from node
+    rdd_links = df_l\
+        .rdd\
+        .map(lambda r: (r[0], r[1]))\
+        .distinct()\
+        .groupByKey()\
+        .cache()
+
+    # initialize all unique from nodes with an initial rank 1.0
+    rdd_ranks = rdd_links.map(lambda x: (x[0], 1.0))
+
+    # update the node ranks using page rank algorithm
+    for i in range(no_of_updates):
+        # calculate the probability distribution per from node
+        rdd_links_ranks = rdd_links\
+            .join(rdd_ranks) \
+            .flatMap(lambda x: node_probabilities(x[1][0], x[1][1]))
+
+        # use the probability distribution to update the node ranks
+        rdd_ranks = rdd_links_ranks\
+            .reduceByKey(lambda x, y: x + y)\
+            .mapValues(lambda x: x * weight + offset)
+
+    # create dataframe of resulting ranks
+    df_ranks = rdd_ranks\
+        .toDF()\
+        .toDF('Node', 'Rank')\
+        .sort(col('Rank').desc())
+
+    # write ranks to file
+    df_ranks \
+        .coalesce(1) \
+        .write \
+        .format('com.databricks.spark.csv') \
+        .mode('overwrite') \
+        .save(path_to_write + "/task4", header='false', sep=',')
+
 #########################################################################################################
 
 
@@ -114,4 +165,5 @@ web_pages_sorted_by_inlinks(df_links)
 # Given a node v, please output the list of nodes that v points to, and the list of nodes that points to v.
 node_connectivity(df_links, task3_node)
 
-# Task 4:
+# Task 4: Compute the PageRank of the graph using MapReduce.
+page_rank(df_links)
